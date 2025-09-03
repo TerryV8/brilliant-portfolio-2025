@@ -1,0 +1,128 @@
+---
+# SOC Playbook: Blacklist a public IP on Linux hosts
+# Purpose:
+#   - Quickly block a malicious public IP at the host firewall.
+# Safe-by-default:
+#   - Requires explicit IP via -e "blacklist_ip=1.2.3.4".
+#   - Defaults to a non-persistent rule unless persist=true.
+# Methods supported:
+#   - firewalld (preferred when active)
+#   - iptables fallback
+# How to run:
+#   ansible-playbook -i inventories/dev/hosts.yml playbooks/blacklist_ip.yml -l web --become \
+#     -e 'blacklist_ip=203.0.113.10 persist=true'
+
+- name: Blacklist a public IP
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    blacklist_ip: "{{ blacklist_ip | default('', true) }}"   # REQUIRED (set via --extra-vars)
+    method: "auto"        # auto | firewalld | iptables
+    persist: false        # make the rule persistent (firewalld: --permanent; iptables: best-effort)
+
+    # Simple private-range guard (avoid blacklisting RFC1918, loopback, link-local by mistake)
+    private_ip_patterns:
+      - '^10\.'
+      - '^192\.168\.'
+      - '^172\.(1[6-9]|2[0-9]|3[0-1])\.'
+      - '^127\.'
+      - '^169\.254\.'
+
+  pre_tasks:
+    - name: Validate input IP provided
+      assert:
+        that:
+          - blacklist_ip | length > 0
+          - blacklist_ip is match('^([0-9]{1,3}\.){3}[0-9]{1,3}$')
+        fail_msg: "Provide a valid IPv4 via -e 'blacklist_ip=1.2.3.4'"
+        success_msg: "IP provided: {{ blacklist_ip }}"
+
+    - name: Prevent blocking private or local ranges (basic regex guard)
+      assert:
+        that:
+          - private_ip_patterns | select('match', blacklist_ip) | list | length == 0
+        fail_msg: "Refusing to block private/local address: {{ blacklist_ip }}"
+        success_msg: "Public-looking IP accepted: {{ blacklist_ip }}"
+
+    - name: Detect firewalld state
+      shell: |
+        if command -v firewall-cmd >/dev/null 2>&1; then systemctl is-active firewalld || true; else echo "absent"; fi
+      register: firewalld_state
+      changed_when: false
+      failed_when: false
+
+  tasks:
+    - name: Decide method automatically
+      set_fact:
+        use_method: >-
+          {{ 'firewalld' if (method == 'auto' and firewalld_state.stdout in ['active']) else
+             (method if method != 'auto' else 'iptables') }}
+
+    - name: Show chosen method
+      debug:
+        msg: "Blocking {{ blacklist_ip }} using {{ use_method }} (persist={{ persist }})"
+
+    # ------------------- firewalld path -------------------
+    - name: firewalld | add immediate rich-rule (reject src)
+      command: >-
+        firewall-cmd --add-rich-rule="rule family=ipv4 source address={{ blacklist_ip }} reject"
+      when: use_method == 'firewalld'
+      register: fw_immediate
+      changed_when: "success" in (fw_immediate.stdout | default('')) or (fw_immediate.rc == 0)
+
+    - name: firewalld | add permanent rich-rule
+      command: >-
+        firewall-cmd --permanent --add-rich-rule="rule family=ipv4 source address={{ blacklist_ip }} reject"
+      when: use_method == 'firewalld' and persist | bool
+      register: fw_perm
+      changed_when: "success" in (fw_perm.stdout | default('')) or (fw_perm.rc == 0)
+
+    - name: firewalld | reload to apply permanent rules
+      command: firewall-cmd --reload
+      when: use_method == 'firewalld' and persist | bool
+
+    # ------------------- iptables path -------------------
+    - name: iptables | ensure DROP rule exists (insert if missing)
+      shell: |
+        if iptables -C INPUT -s {{ blacklist_ip }} -j DROP 2>/dev/null; then
+          echo "present";
+        else
+          iptables -I INPUT -s {{ blacklist_ip }} -j DROP && echo "inserted";
+        fi
+      when: use_method == 'iptables'
+      register: ipt_result
+      changed_when: "inserted" in (ipt_result.stdout | default(''))
+
+    - name: iptables | best-effort persist (Debian-style rules.v4)
+      shell: |
+        if [ "{{ persist | bool }}" = "True" ]; then
+          if command -v iptables-save >/dev/null 2>&1 && [ -d /etc/iptables ]; then
+            iptables-save > /etc/iptables/rules.v4 && echo saved || echo not_saved;
+          else
+            echo skipped;
+          fi
+        else
+          echo skipped;
+        fi
+      when: use_method == 'iptables'
+      register: ipt_persist
+      changed_when: "saved" in (ipt_persist.stdout | default(''))
+      failed_when: false
+
+    # ------------------- audit breadcrumb -------------------
+    - name: Append SOC audit line (control node)
+      delegate_to: localhost
+      lineinfile:
+        path: "{{ lookup('env','SOC_AUDIT_LOG') | default('soc_audit.log', true) }}"
+        line: >-
+          {{ {'timestamp': lookup('pipe','date -Iseconds'),
+               'action': 'blacklist_ip',
+               'host': inventory_hostname,
+               'ip': blacklist_ip,
+               'method': use_method,
+               'persist': persist } | to_json }}
+        create: true
+        insertafter: EOF
+      changed_when: false

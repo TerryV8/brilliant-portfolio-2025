@@ -1,0 +1,343 @@
+---
+# SOC Playbook: Phishing Email Triage
+# Purpose:
+#   - Validate sender domain basics (DNS, SPF/DMARC presence)
+#   - Parse email content for URLs and suspicious keywords
+#   - Check URL reputation (basic HEAD check; optional VirusTotal with API key)
+#   - Hash and optionally AV-scan attachments
+# Safe-by-default:
+#   - Only reads local files; optional external lookups behind variables
+# How to run (examples):
+#   ansible-playbook playbooks/ir_phishing_email.yml -e 'email_file=sample.eml sender_email=alerts@contoso.com'
+#   ansible-playbook playbooks/ir_phishing_email.yml -e 'attachments_dir=./attachments urls=["https://bit.ly/x","http://bad.tld/"]'
+# Optional VirusTotal (if key provided): -e 'VT_API_KEY=****'
+
+- name: Phishing email triage
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    email_file: "{{ email_file | default('', true) }}"         # path to .eml (optional)
+    sender_email: "{{ sender_email | default('', true) }}"     # "user@example.com" (optional)
+    sender_domain: "{{ (sender_email | default('') | regex_search('@(.+)$')) and (sender_email | regex_replace('.*@', '')) or (sender_domain | default('')) }}"
+    attachments_dir: "{{ attachments_dir | default('', true) }}"  # directory with attachments (optional)
+    urls: "{{ urls | default([], true) }}"                      # optional list of URLs (will merge with URLs parsed from email)
+    suspicious_keywords:
+      - urgent
+      - password
+      - reset
+      - password reset
+      - login
+      - credentials
+      - mfa
+      - otp
+      - verify identity
+      - verify your account
+      - security alert
+      - unusual activity
+      - re-validate
+      - update billing
+      - payment
+      - wire
+      - payroll
+      - refund
+      - suspension
+      - docusign
+      - sharepoint
+      - office365
+      - cryptocurrency
+      - gift card
+    VT_API_KEY: "{{ VT_API_KEY | default('', true) }}"
+    ABUSEIPDB_API_KEY: "{{ ABUSEIPDB_API_KEY | default('', true) }}"  # optional for IP reputation
+    fail_on_malware: false  # set true to fail play if malware detected in attachments
+    recipient_alert_threshold: 20  # warn if total recipients exceed this count
+
+    out_dir: artifacts/phishing
+    report_path: "{{ out_dir }}/report_{{ lookup('pipe','date +%Y%m%d_%H%M%S') }}.json"
+
+  pre_tasks:
+    - name: Ensure output directory exists
+      file:
+        path: "{{ out_dir }}"
+        state: directory
+        mode: "0755"
+
+  tasks:
+    # ------------------- Domain checks -------------------
+    - name: Domain | basic A record lookup
+      shell: getent hosts {{ sender_domain }} | awk '{print $1}'
+      register: a_lookup
+      when: sender_domain | length > 0
+      changed_when: false
+      failed_when: false
+
+    - name: Domain | MX record check (requires dig)
+      shell: dig +short MX {{ sender_domain }}
+      register: mx_lookup
+      when: sender_domain | length > 0
+      changed_when: false
+      failed_when: false
+
+    - name: Domain | SPF TXT presence (requires dig)
+      shell: dig +short TXT {{ sender_domain }} | grep -i 'v=spf1' || true
+      register: spf_lookup
+      when: sender_domain | length > 0
+      changed_when: false
+      failed_when: false
+
+    - name: Domain | DMARC TXT presence (requires dig)
+      shell: dig +short TXT _dmarc.{{ sender_domain }}
+      register: dmarc_lookup
+      when: sender_domain | length > 0
+      changed_when: false
+      failed_when: false
+
+    - name: Domain | URLhaus host reputation
+      uri:
+        url: "https://urlhaus.abuse.ch/api/v1/host/"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          host: "{{ sender_domain }}"
+        status_code: 200
+      register: urlhaus_host
+      when: sender_domain | length > 0
+      failed_when: false
+      changed_when: false
+
+    - name: Domain | WHOIS (creation date / registrar) if whois present
+      shell: |
+        if command -v whois >/dev/null 2>&1; then
+          whois {{ sender_domain }} | awk -F': ' '/Creation Date|Created On|Domain Registration Date|Registrar:/{print $0}' | head -n 10;
+        else
+          echo "whois_not_found";
+        fi
+      register: whois_info
+      when: sender_domain | length > 0
+      changed_when: false
+      failed_when: false
+
+    # ------------------- Email content parsing -------------------
+    - name: Email | read eml (if provided)
+      slurp:
+        src: "{{ email_file }}"
+      register: eml_raw
+      when: email_file | length > 0
+
+    - name: Email | extract body text (best-effort)
+      set_fact:
+        eml_text: "{{ (eml_raw['content'] | b64decode) if (email_file | length > 0) else '' }}"
+
+    - name: Email | extract URLs with regex
+      set_fact:
+        eml_urls: "{{ (eml_text | regex_findall('https?://[^\n\r\t >\"]+')) | default([], true) | unique }}"
+
+    - name: Email | extract recipients (To/Cc/Bcc)
+      set_fact:
+        recips_to_raw: "{{ (eml_text | regex_search('(?mi)^to:\\s*(.*)$', '\\1') | default('')) }}"
+        recips_cc_raw: "{{ (eml_text | regex_search('(?mi)^cc:\\s*(.*)$', '\\1') | default('')) }}"
+        recips_bcc_raw: "{{ (eml_text | regex_search('(?mi)^bcc:\\s*(.*)$', '\\1') | default('')) }}"
+
+    - name: Email | normalize recipient addresses
+      set_fact:
+        recipients_to: "{{ (recips_to_raw | regex_findall('[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}')) | unique }}"
+        recipients_cc: "{{ (recips_cc_raw | regex_findall('[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}')) | unique }}"
+        recipients_bcc: "{{ (recips_bcc_raw | regex_findall('[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}')) | unique }}"
+        recipients_total_count: "{{ (recipients_to | length) + (recipients_cc | length) + (recipients_bcc | length) }}"
+
+    - name: Email | flag bulk recipient count
+      set_fact:
+        recipients_bulk_flag: "{{ recipients_total_count | int >= recipient_alert_threshold | bool }}"
+
+    - name: Email | detect suspicious keywords (case-insensitive)
+      set_fact:
+        found_keywords: >-
+          {{ suspicious_keywords | select('search', (eml_text | lower | default(''))) | list }}
+
+    - name: Merge provided URLs and parsed URLs
+      set_fact:
+        all_urls: "{{ (urls | default([], true)) + (eml_urls | default([], true)) | unique }}"
+
+    # ------------------- URL reputation (basic) -------------------
+    - name: URLs | HEAD check (status only)
+      uri:
+        url: "{{ item }}"
+        method: HEAD
+        return_content: no
+        timeout: 8
+        validate_certs: yes
+      loop: "{{ all_urls }}"
+      register: url_head
+      failed_when: false
+      changed_when: false
+
+    - name: URLs | optional VirusTotal lookup (v3, url scan ID)
+      uri:
+        url: "https://www.virustotal.com/api/v3/urls"
+        method: POST
+        headers:
+          x-apikey: "{{ VT_API_KEY }}"
+        body_format: form-urlencoded
+        body:
+          url: "{{ item }}"
+        status_code: 200
+      loop: "{{ all_urls }}"
+      register: vt_submit
+      when: VT_API_KEY | length > 0
+      failed_when: false
+      changed_when: false
+
+    - name: URLs | URLhaus reputation (per URL)
+      uri:
+        url: "https://urlhaus.abuse.ch/api/v1/url/"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          url: "{{ item }}"
+        status_code: 200
+      loop: "{{ all_urls }}"
+      register: urlhaus_resp
+      failed_when: false
+      changed_when: false
+
+    - name: URLs | extract hostnames
+      set_fact:
+        url_hosts: "{{ all_urls | map('regex_replace','^https?://([^/]+).*$','\\1') | list | unique }}"
+
+    - name: URLs | resolve hosts to IPs
+      shell: getent ahosts {{ item }} | awk '{print $1}' | sort -u | head -n 3 || true
+      loop: "{{ url_hosts }}"
+      register: host_ips
+      changed_when: false
+      failed_when: false
+
+    - name: URLs | flatten unique IPs
+      set_fact:
+        resolved_ips: "{{ host_ips.results | map(attribute='stdout_lines') | list | flatten | select('match','^\\d+\\.\\d+\\.\\d+\\.\\d+$') | list | unique }}"
+
+    - name: IP | AbuseIPDB check (optional)
+      uri:
+        url: "https://api.abuseipdb.com/api/v2/check?ipAddress={{ item }}&maxAgeInDays=90"
+        method: GET
+        headers:
+          Key: "{{ ABUSEIPDB_API_KEY }}"
+          Accept: "application/json"
+        status_code: 200
+      loop: "{{ resolved_ips }}"
+      register: abuseipdb_resp
+      when: ABUSEIPDB_API_KEY | length > 0
+      failed_when: false
+      changed_when: false
+
+    # ------------------- Attachment analysis -------------------
+    - name: Attachments | list files
+      find:
+        paths: "{{ attachments_dir }}"
+        file_type: file
+        recurse: no
+      register: attach_files
+      when: attachments_dir | length > 0
+
+    - name: Attachments | sha256 hashes (shell)
+      shell: sha256sum "{{ item.path }}" | awk '{print $1}'
+      args:
+        warn: false
+      loop: "{{ attach_files.files | default([]) }}"
+      register: attach_hashes
+      when: attachments_dir | length > 0
+      changed_when: false
+      failed_when: false
+
+    - name: Attachments | optional ClamAV scan (if clamscan present)
+      shell: |
+        if command -v clamscan >/dev/null 2>&1; then clamscan --no-summary "{{ item.path }}" || true; else echo "clamscan_not_found"; fi
+      loop: "{{ attach_files.files | default([]) }}"
+      register: attach_av
+      when: attachments_dir | length > 0
+      changed_when: false
+      failed_when: false
+
+    - name: Attachments | derive malware flags from ClamAV output
+      set_fact:
+        malware_hits: "{{ attach_av.results | default([]) | map(attribute='stdout') | list | select('search','FOUND') | list }}"
+        malware_found: "{{ (attach_av.results | default([]) | map(attribute='stdout') | list | select('search','FOUND') | list | length) > 0 }}"
+      when: attachments_dir | length > 0
+
+    # ------------------- Build and save report -------------------
+    - name: Build report structure
+      set_fact:
+        phishing_report:
+          timestamp: "{{ lookup('pipe','date -Iseconds') }}"
+          sender_email: "{{ sender_email }}"
+          sender_domain: "{{ sender_domain }}"
+          domain_checks:
+            a_records: "{{ (a_lookup.stdout_lines | default([])) }}"
+            mx_records: "{{ (mx_lookup.stdout_lines | default([])) }}"
+            spf_present: "{{ (spf_lookup.stdout | default('')) | length > 0 }}"
+            dmarc_present: "{{ (dmarc_lookup.stdout | default('')) | length > 0 }}"
+            urlhaus_host: "{{ urlhaus_host.json | default({}) }}"
+            whois_info: "{{ whois_info.stdout | default('') }}"
+          content:
+            keywords_found: "{{ found_keywords | default([]) }}"
+            urls_parsed: "{{ eml_urls | default([]) }}"
+            recipients:
+              to: "{{ recipients_to | default([]) }}"
+              cc: "{{ recipients_cc | default([]) }}"
+              bcc: "{{ recipients_bcc | default([]) }}"
+              total_count: "{{ recipients_total_count | default(0) }}"
+              bulk_flag: "{{ recipients_bulk_flag | default(false) }}"
+          urls:
+            head_results: "{{ url_head.results | default([]) | map(attribute='status') | list }}"
+            total: "{{ all_urls | length }}"
+            urlhaus: "{{ urlhaus_resp.results | default([]) | map(attribute='json') | list }}"
+            hosts: "{{ url_hosts | default([]) }}"
+            resolved_ips: "{{ resolved_ips | default([]) }}"
+            abuseipdb: "{{ abuseipdb_resp.results | default([]) | map(attribute='json') | list }}"
+          attachments:
+            count: "{{ (attach_files.files | default([])) | length }}"
+            hashes: "{{ attach_hashes.results | default([]) | map(attribute='stdout') | list }}"
+            av_results: "{{ attach_av.results | default([]) | map(attribute='stdout') | list }}"
+            malware_found: "{{ malware_found | default(false) }}"
+            malware_hits: "{{ malware_hits | default([]) }}"
+
+    - name: Write JSON report
+      copy:
+        dest: "{{ report_path }}"
+        content: "{{ phishing_report | to_nice_json }}"
+        mode: "0640"
+
+    - name: Summary
+      debug:
+        msg: >-
+          Report saved to {{ report_path }}. URLs checked={{ all_urls | length }}, attachments={{ (attach_files.files | default([])) | length }}.
+
+    - name: Alert if bulk recipients detected
+      debug:
+        msg: "Bulk recipient count detected ({{ recipients_total_count }}) >= threshold {{ recipient_alert_threshold }}"
+      when: recipients_bulk_flag | default(false)
+
+    - name: Alert if malware detected
+      debug:
+        msg: "Possible malware detected in attachments (ClamAV). See report: {{ report_path }}"
+      when: malware_found | default(false)
+
+    - name: Fail play when malware detected (optional)
+      assert:
+        that:
+          - not (malware_found | default(false))
+        fail_msg: "Malware detected in attachments (ClamAV)."
+      when: fail_on_malware | bool
+
+    - name: Append SOC audit line
+      lineinfile:
+        path: "{{ lookup('env','SOC_AUDIT_LOG') | default('soc_audit.log', true) }}"
+        line: >-
+          {{ {'timestamp': lookup('pipe','date -Iseconds'),
+               'action': 'phishing_email_triage',
+               'report': report_path,
+               'sender_domain': sender_domain } | to_json }}
+        create: true
+        insertafter: EOF
+      changed_when: false
+

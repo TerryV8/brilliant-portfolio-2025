@@ -1,0 +1,89 @@
+---
+# SOC Playbook: Collect Logs
+# Purpose:
+#   - Find log files on servers, package them per host, fetch to the analyst box.
+# Why this matters:
+#   - Triage often starts by pulling recent logs quickly and safely.
+#   - Clear variables, minimal logic, auditable artifacts.
+# How to run:
+#   ansible-playbook -i inventories/dev/hosts.yml playbooks/collect_logs.yml -l app01
+# Customize:
+#   ansible-playbook -i inventories/dev/hosts.yml playbooks/collect_logs.yml \
+#     -e 'log_paths=["/var/log","/opt/app/logs"] include_patterns=["*.log","*.json"] days=3'
+
+- name: Collect logs for analysis
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    # What to collect
+    log_paths:
+      - "/var/log"            # add app paths like /opt/app/logs
+    include_patterns:
+      - "*.log"
+      - "*.log.*"
+    days: 7                      # files modified in last N days (set 0 to ignore time)
+
+    # Where to fetch locally on the control machine
+    fetch_dir: "artifacts/logs"
+
+  tasks:
+    - name: Find logs per path (simple patterns)
+      find:
+        paths: "{{ item }}"
+        recurse: yes
+        patterns: "{{ include_patterns }}"
+        file_type: file
+      loop: "{{ log_paths }}"
+      register: found_logs
+
+    - name: Flatten file list
+      set_fact:
+        all_logs: "{{ (found_logs.results | map(attribute='files') | list | flatten) | default([], true) }}"
+
+    - name: Optional time filter (last N days)
+      set_fact:
+        shortlisted: >-
+          {{ all_logs | selectattr('mtime', 'defined')
+                      | selectattr('mtime', '>=', (ansible_date_time.epoch | int) - (days | int) * 86400)
+                      | list }}
+      when: days | int > 0
+
+    - name: Use all files when days == 0
+      set_fact:
+        shortlisted: "{{ all_logs }}"
+      when: days | int == 0
+
+    - name: Create tar.gz archive of shortlisted files (direct)
+      archive:
+        path: "{{ shortlisted | map(attribute='path') | list }}"
+        dest: "/tmp/{{ inventory_hostname }}-logs.tar.gz"
+        format: gz
+      when: shortlisted | length > 0
+
+    - name: Ensure local fetch directory exists
+      delegate_to: localhost
+      file:
+        path: "{{ fetch_dir }}"
+        state: directory
+        mode: "0755"
+      changed_when: false
+
+    - name: Fetch archive to control node
+      fetch:
+        src: "/tmp/{{ inventory_hostname }}-logs.tar.gz"
+        dest: "{{ fetch_dir }}/"
+        flat: yes
+      when: shortlisted | length > 0
+
+    - name: Print summary
+      debug:
+        msg: >-
+          {{ inventory_hostname }}: collected {{ shortlisted | length }} files. Local archive -> {{ fetch_dir }}/{{ inventory_hostname }}-logs.tar.gz
+      when: shortlisted | length > 0
+
+    - name: Nothing collected
+      debug:
+        msg: "{{ inventory_hostname }}: 0 files matched (paths/patterns/days)."
+      when: shortlisted | length == 0

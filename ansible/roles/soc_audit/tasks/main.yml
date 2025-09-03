@@ -1,0 +1,30 @@
+---
+- name: Ensure audit log directory exists
+  file:
+    path: "{{ soc_audit_log | dirname }}"
+    state: directory
+    mode: '0755'
+
+- name: Touch audit log file
+  file:
+    path: "{{ soc_audit_log }}"
+    state: touch
+    mode: '0644'
+
+- name: Emit test SOC audit event via Python CLI
+  vars:
+    _soc_kind: "{{ soc_test_event.kind | default('ops') }}"
+    _soc_severity: "{{ soc_test_event.severity | default('low') }}"
+    _soc_message: "{{ soc_test_event.message | default('ansible test event') }}"
+    _soc_username: "{{ soc_test_event.username | default('ansible') }}"
+  environment:
+    SOC_AUDIT_LOG: "{{ soc_audit_log }}"
+  command: >-
+    python3 yt_neuralnine/main_script_argument_soc.py
+    --kind {{ _soc_kind }}
+    --message "{{ _soc_message }}"
+    --severity {{ _soc_severity }}
+    --username {{ _soc_username }}
+  args:
+    chdir: "{{ playbook_dir }}/.."
+  changed_when: false

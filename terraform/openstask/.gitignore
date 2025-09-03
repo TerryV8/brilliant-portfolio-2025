@@ -1,0 +1,17 @@
+# Terraform local state
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+crash.log
+crash.*.log
+
+# Local secrets or artifacts
+.secrets/
+*.pem
+*.key
+*.crt
+
+# Plans
+*.tfplan
+plan.out

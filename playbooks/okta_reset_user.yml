@@ -1,0 +1,77 @@
+---
+# SOC Playbook: Okta unlock + temp password
+# Purpose:
+#   - For SSO users in Okta: unlock a blocked user and generate a temporary password.
+# Safety:
+#   - Requires OKTA_BASE_URL and OKTA_API_TOKEN (masked/secret).
+#   - Does not print sensitive response bodies. Writes a minimal audit line.
+# How to run (example):
+#   ansible-playbook playbooks/okta_reset_user.yml -e 'okta_user_id=00u123abcd OKTA_BASE_URL=https://yourorg.okta.com OKTA_API_TOKEN=****'
+# Notes:
+#   - The temp password is returned in the API response. For safety we do not print it here.
+#     If needed, capture it to a protected file or secure secret manager.
+
+- name: Okta | Unlock user and issue temporary password
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    OKTA_BASE_URL: "{{ OKTA_BASE_URL | default('', true) }}"   # e.g. https://yourorg.okta.com
+    OKTA_API_TOKEN: "{{ OKTA_API_TOKEN | default('', true) }}" # SSWS token
+    okta_user_id: "{{ okta_user_id | default('', true) }}"     # Okta user id (00u...)
+
+  pre_tasks:
+    - name: Validate required inputs
+      assert:
+        that:
+          - OKTA_BASE_URL | length > 0
+          - OKTA_API_TOKEN | length > 0
+          - okta_user_id | length > 0
+        fail_msg: "Provide OKTA_BASE_URL, OKTA_API_TOKEN, and okta_user_id via -e or env vars."
+
+  tasks:
+    - name: Okta | unlock user
+      uri:
+        url: "{{ OKTA_BASE_URL }}/api/v1/users/{{ okta_user_id }}/lifecycle/unlock"
+        method: POST
+        headers:
+          Authorization: "SSWS {{ OKTA_API_TOKEN }}"
+          Accept: application/json
+        status_code: 200
+        return_content: yes
+      register: okta_unlock
+
+    - name: Okta | reset password (temp)
+      uri:
+        url: "{{ OKTA_BASE_URL }}/api/v1/users/{{ okta_user_id }}/lifecycle/expire_password?tempPassword=true"
+        method: POST
+        headers:
+          Authorization: "SSWS {{ OKTA_API_TOKEN }}"
+          Accept: application/json
+        status_code: 200
+        return_content: yes
+      register: okta_pw
+
+    - name: (Optional) Save temp password securely to a file (disabled by default)
+      copy:
+        dest: "okta_temp_pw_{{ okta_user_id }}.json"
+        content: "{{ okta_pw.json | to_nice_json }}"
+        mode: "0600"
+      when: false  # set to true only if you need to capture the temp password locally
+
+    - name: Summary (no secrets)
+      debug:
+        msg: >-
+          Okta user {{ okta_user_id }} unlocked and temp password issued. Check secure channel for delivery.
+
+    - name: Append SOC audit line
+      lineinfile:
+        path: "{{ lookup('env','SOC_AUDIT_LOG') | default('soc_audit.log', true) }}"
+        line: >-
+          {{ {'timestamp': lookup('pipe','date -Iseconds'),
+               'action': 'okta_unlock_temp_password',
+               'okta_user_id': okta_user_id } | to_json }}
+        create: true
+        insertafter: EOF
+      changed_when: false

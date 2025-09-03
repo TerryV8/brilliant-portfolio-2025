@@ -1,0 +1,97 @@
+# Filebeat config (Jinja2 template)
+# Ships SOC audit log and IR JSON reports to Elasticsearch.
+# Render vars via Ansible: ES_URL, ES_API_KEY or ES_USER/ES_PASS.
+
+filebeat.inputs:
+  - type: filestream
+    id: soc_audit
+    enabled: true
+    paths:
+      - {{ lookup('env','SOC_AUDIT_LOG') | default('soc_audit.log', true) | to_json }}
+    parsers:
+      - ndjson:
+          target: ""
+          add_error_key: true
+    fields:
+      event.module: soc
+      event.dataset: soc.audit
+    fields_under_root: true
+
+  - type: filestream
+    id: phishing_reports
+    enabled: true
+    paths:
+      - {{ (playbook_dir | default('.')) + '/../artifacts/phishing/*.json' | to_json }}
+    parsers:
+      - ndjson:
+          target: "phishing"
+          add_error_key: true
+    fields:
+      event.module: soc
+      event.dataset: soc.phishing
+    fields_under_root: true
+
+  - type: filestream
+    id: endpoint_reports
+    enabled: true
+    paths:
+      - {{ (playbook_dir | default('.')) + '/../artifacts/endpoint/*.json' | to_json }}
+    parsers:
+      - ndjson:
+          target: "endpoint"
+          add_error_key: true
+    fields:
+      event.module: soc
+      event.dataset: soc.endpoint
+    fields_under_root: true
+
+processors:
+  - add_host_metadata: ~
+  - add_cloud_metadata: ~
+  - timestamp:
+      field: "@timestamp"
+      ignore_failure: true
+  - rename:
+      fields:
+        - from: action
+          to: event.action
+          ignore_missing: true
+        - from: host
+          to: host.name
+          ignore_missing: true
+        - from: user
+          to: user.name
+          ignore_missing: true
+  - drop_fields:
+      when:
+        has_fields: ["log","input","ecs","agent"]
+      ignore_missing: true
+      fields: ["log","input","ecs","agent"]
+
+# Output: choose API key or user/pass
+output.elasticsearch:
+  hosts: ["{{ ES_URL | default('https://es.example.com:9200', true) }}"]
+  {% if ES_API_KEY is defined and ES_API_KEY|length > 0 %}
+  api_key: "{{ ES_API_KEY }}"
+  {% else %}
+  username: "{{ ES_USER | default('', true) }}"
+  password: "{{ ES_PASS | default('', true) }}"
+  {% endif %}
+  protocol: https
+  ssl:
+    verification_mode: full
+
+setup.ilm.enabled: true
+setup.ilm.rollover_alias: "soc-audit"
+setup.ilm.policy_name: "soc-ilm"
+setup.template.enabled: true
+setup.template.name: "soc-template"
+setup.template.pattern: ["soc-*"]
+
+# Index naming
+setup.template.settings:
+  index.number_of_shards: 1
+  index.number_of_replicas: 1
+
+# Optional index name if not using default
+# index: "soc-%{+yyyy.MM.dd}"

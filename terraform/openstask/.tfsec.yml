@@ -1,0 +1,12 @@
+# tfsec configuration
+# Docs: https://aquasecurity.github.io/tfsec/latest/guides/configuration/config/
+
+severity_overrides: {}
+exclude: []
+
+# Example of excluding a rule (uncomment and tailor):
+# exclude:
+#   - aws-s3-enable-bucket-encryption
+
+# Set to true if you want CI to pass even on findings (we keep it strict by default):
+soft_fail: false

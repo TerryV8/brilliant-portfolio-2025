@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Login · {{ super() }}{% endblock %}
+
+{% block content %}
+<main class="container d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+  <div class="card shadow auth-card">
+    <div class="card-body p-4">
+      <h1 class="h4 mb-3 text-center">Sign in</h1>
+      <p class="text-muted text-center mb-4">Access your account to continue</p>
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="mb-3">
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'danger' if category == 'danger' else category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <form action="/login" method="POST" class="needs-validation" novalidate>
+        <div class="mb-3">
+          <label for="email" class="form-label">Email address</label>
+          <input
+            type="email"
+            class="form-control"
+            id="email"
+            name="email"
+            placeholder="you@example.com"
+            required
+          />
+          <div class="invalid-feedback">Please enter a valid email.</div>
+        </div>
+
+        <div class="mb-3">
+          <label for="password" class="form-label">Password</label>
+          <input
+            type="password"
+            class="form-control"
+            id="password"
+            name="password"
+            placeholder="Your password"
+            required
+          />
+          <div class="invalid-feedback">Password is required.</div>
+        </div>
+
+        <div class="d-grid gap-2">
+          <button type="submit" class="btn btn-primary">Login</button>
+          <a href="/" class="btn btn-secondary">Back to Home</a>
+        </div>
+      </form>
+
+      <div class="text-center mt-3">
+        <small class="text-muted">Don't have an account?
+          <a href="/register">Register</a>
+        </small>
+      </div>
+    </div>
+  </div>
+</main>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Client-side validation
+  (function() {
+    'use strict';
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.from(forms).forEach(function(form) {
+      form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      }, false);
+    });
+  })();
+</script>
+{% endblock %}

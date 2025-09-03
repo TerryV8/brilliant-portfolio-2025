@@ -1,0 +1,22 @@
+---
+- name: SOC Operations on localhost
+  hosts: local
+  gather_facts: false
+  vars:
+    repo_root: "{{ playbook_dir }}/.."
+  roles:
+    - role: soc_audit
+      vars:
+        soc_audit_log: "{{ soc_audit_log | default(repo_root + '/soc_audit_log.jsonl') }}"
+        soc_test_event:
+          kind: "ops"
+          message: "ansible test event"
+          severity: "low"
+          username: "ansible"
+    - role: ownership_restore
+      vars:
+        ownership_root: "{{ ownership_root | default(repo_root) }}"
+        ownership_owner: "{{ ownership_owner | default(lookup('env','USER')) }}"
+        ownership_group: "{{ ownership_group | default(omit) }}"
+        ownership_apply: "{{ ownership_apply | default(false) }}"
+        soc_audit_log: "{{ soc_audit_log | default(repo_root + '/soc_audit_log.jsonl') }}"

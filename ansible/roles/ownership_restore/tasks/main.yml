@@ -1,0 +1,23 @@
+---
+- name: Build ownership restore command
+  set_fact:
+    _ownership_cmd: >-
+      python3 use_cases_soc/main_ownership_restore_soc.py
+      --owner {{ ownership_owner }}
+      {% if ownership_group is defined %}--group {{ ownership_group }}{% endif %}
+      --root {{ ownership_root }}
+      {% if ownership_apply | bool %}--apply{% endif %}
+
+- name: Run ownership restore (dry-run by default)
+  environment:
+    SOC_AUDIT_LOG: "{{ soc_audit_log | default((playbook_dir + '/..') + '/soc_audit_log.jsonl') }}"
+  command: >-
+    {{ _ownership_cmd }}
+  args:
+    chdir: "{{ playbook_dir }}/.."
+  register: ownership_run
+  changed_when: "'Ownership changed' in ownership_run.stdout or (ownership_apply | bool)"
+
+- name: Show ownership restore output
+  debug:
+    var: ownership_run.stdout

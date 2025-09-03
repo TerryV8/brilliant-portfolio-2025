@@ -1,0 +1,224 @@
+---
+# SOC Playbook: Endpoint Suspicious Activity Triage 
+# Purpose:
+#   - Triage suspicious events on a Linux endpoint: user type, triggered events, history, likely objective.
+#   - Safe-by-default evidence collection, with gated isolation and process blocking.
+# Actions:
+#   - Collect: users/sessions, process list, listening sockets, recent command history, sudo and auth logs.
+#   - Detect: simple patterns for suspicious processes and ports.
+#   - Respond (optional): isolate host at firewall; kill and quarantine malicious processes.
+# Output:
+#   - JSON report saved under artifacts/endpoint/ with findings and actions taken.
+# How to run (read-only):
+#   ansible-playbook -i inventories/dev/hosts.yml playbooks/ir_endpoint_suspicious_activity.yml -l app01 --become
+# With isolation and process kill:
+#   ansible-playbook -i inventories/dev/hosts.yml playbooks/ir_endpoint_suspicious_activity.yml -l app01 --become \
+#     -e 'isolate_host=true allowed_mgmt_cidr=203.0.113.10/32 block_processes=true'
+
+- name: Endpoint suspicious activity triage
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    # Controls (safe-by-default)
+    isolate_host: false              # if true, restrict inbound traffic to allowed_mgmt_cidr via firewalld/iptables
+    allowed_mgmt_cidr: ""           # e.g., 203.0.113.10/32 or your VPN CIDR
+    block_processes: false           # if true, kill suspicious processes and quarantine binaries
+    quarantine_dir: "/var/quarantine"
+
+    # Detection heuristics (simple, adjustable)
+    suspicious_process_patterns:
+      - crypto
+      - xmrig
+      - kinsing
+      - kdevtmpfsi
+      - masscan
+      - nmap
+      - socat
+      - nc 
+      - curl\s+http
+      - wget\s+http
+      - python\s+.*http
+      - sshd:.*@pts
+    suspicious_ports:
+      - 4444
+      - 5555
+      - 3333
+      - 1337
+
+    out_dir: artifacts/endpoint
+    report_path: "{{ out_dir }}/report_{{ inventory_hostname }}_{{ lookup('pipe','date +%Y%m%d_%H%M%S') }}.json"
+
+  pre_tasks:
+    - name: Ensure output and quarantine directories exist
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ out_dir }}"
+        - "{{ quarantine_dir }}"
+
+  tasks:
+    # -------- Evidence Collection --------
+    - name: Who am I / users
+      shell: |
+        id -a; echo '---'; who; echo '---'; last -n 10 -a | head -n 50 || true
+      register: users_info
+      changed_when: false
+
+    - name: Processes snapshot
+      shell: ps aux --sort=-%cpu | head -n 100
+      register: ps_list
+      changed_when: false
+
+    - name: Listening sockets and connections
+      shell: |
+        if command -v ss >/dev/null 2>&1; then
+          ss -tulpn || true; ss -antp | head -n 200 || true;
+        else
+          netstat -tulpn 2>/dev/null || true; netstat -antp 2>/dev/null | head -n 200 || true;
+        fi
+      register: net_list
+      changed_when: false
+
+    - name: Recent shell history (best-effort)
+      shell: |
+        for u in $(awk -F: '{if($7~/(bash|zsh)$/)print $1}' /etc/passwd); do
+          f=$(eval echo ~${u}/.bash_history); [ -f "$f" ] && echo "== $u ==" && tail -n 50 "$f"; done
+      register: history_tail
+      changed_when: false
+      failed_when: false
+
+    - name: Recent sudo and auth logs
+      shell: |
+        journalctl -n 200 -u sudo 2>/dev/null || true; echo '---';
+        journalctl -n 300 -p warning -u ssh 2>/dev/null || true; echo '---';
+        grep -E "(Failed password|Accepted password|sudo:)" /var/log/auth.log 2>/dev/null | tail -n 200 || true
+      register: auth_logs
+      changed_when: false
+      failed_when: false
+
+    # -------- Detection --------
+    - name: Detect suspicious processes by pattern
+      set_fact:
+        suspicious_ps_lines: "{{ ps_list.stdout_lines | default([]) | select('search', item) | list }}"
+      loop: "{{ suspicious_process_patterns }}"
+      register: suspicious_matches
+
+    - name: Flatten suspicious processes
+      set_fact:
+        suspicious_processes: "{{ suspicious_matches.results | map(attribute='ansible_facts.suspicious_ps_lines') | list | flatten | unique }}"
+
+    - name: Extract candidate PIDs
+      set_fact:
+        candidate_pids: "{{ suspicious_processes | map('regex_search','\n*.*\s(\d+)\s') | map('last') | select('string') | list }}"
+      when: suspicious_processes | length > 0
+
+    - name: Detect suspicious ports in listening set
+      set_fact:
+        suspicious_port_hits: "{{ (net_list.stdout | default('')) | regex_findall(':(?:' + (suspicious_ports | join('|')) + ')\b') | unique }}"
+
+    # -------- Optional Response: Kill & Quarantine --------
+    - name: Gather proc -> exe paths for candidate PIDs
+      shell: |
+        for p in {{ candidate_pids | join(' ') }}; do
+          exe=$(readlink -f /proc/$p/exe 2>/dev/null || true); echo "$p $exe"; done
+      register: pid_exe
+      when: block_processes | bool and (candidate_pids | default([])) | length > 0
+      changed_when: false
+
+    - name: Kill candidate PIDs (best-effort)
+      shell: kill -9 {{ item.split()[0] }} 2>/dev/null || true
+      loop: "{{ pid_exe.stdout_lines | default([]) }}"
+      when: block_processes | bool
+      failed_when: false
+
+    - name: Quarantine binaries (copy then remove)
+      shell: |
+        set -e
+        p={{ item.split()[0] }}; exe={{ item.split()[1] | default('') }};
+        if [ -n "$exe" ] && [ -f "$exe" ]; then
+          bn=$(basename "$exe");
+          cp -f --preserve=mode,timestamps "$exe" "{{ quarantine_dir }}/${bn}.{{ inventory_hostname }}.bak" || true;
+          sha256sum "$exe" | awk '{print $1}' > "{{ quarantine_dir }}/${bn}.{{ inventory_hostname }}.sha256" || true;
+          chmod 000 "$exe" || true;
+        fi
+      loop: "{{ pid_exe.stdout_lines | default([]) }}"
+      when: block_processes | bool
+      failed_when: false
+
+    # -------- Optional Response: Host Isolation --------
+    - name: Detect firewalld status
+      shell: |
+        if command -v firewall-cmd >/dev/null 2>&1; then systemctl is-active firewalld || true; else echo "absent"; fi
+      register: firewalld_state
+      changed_when: false
+      failed_when: false
+
+    - name: Isolate via firewalld (allow only mgmt CIDR and established)
+      command: >-
+        firewall-cmd --add-rich-rule="rule family=ipv4 source address={{ allowed_mgmt_cidr }} accept"
+      when: isolate_host | bool and allowed_mgmt_cidr | length > 0 and firewalld_state.stdout == 'active'
+
+    - name: firewalld | drop all other inbound
+      command: >-
+        firewall-cmd --add-rich-rule="rule family=ipv4 source address=0.0.0.0/0 drop"
+      when: isolate_host | bool and allowed_mgmt_cidr | length > 0 and firewalld_state.stdout == 'active'
+
+    - name: Isolate via iptables (fallback)
+      shell: |
+        iptables -P INPUT DROP;
+        iptables -F INPUT;
+        iptables -A INPUT -s {{ allowed_mgmt_cidr }} -j ACCEPT;
+        iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT;
+        iptables -A INPUT -i lo -j ACCEPT;
+      when: isolate_host | bool and allowed_mgmt_cidr | length > 0 and firewalld_state.stdout != 'active'
+      failed_when: false
+
+    # -------- Report --------
+    - name: Build JSON report
+      set_fact:
+        endpoint_report:
+          timestamp: "{{ lookup('pipe','date -Iseconds') }}"
+          host: "{{ inventory_hostname }}"
+          users: "{{ users_info.stdout | default('') }}"
+          processes: "{{ ps_list.stdout | default('') }}"
+          network: "{{ net_list.stdout | default('') }}"
+          history_tail: "{{ history_tail.stdout | default('') }}"
+          auth_logs: "{{ auth_logs.stdout | default('') }}"
+          detections:
+            suspicious_processes: "{{ suspicious_processes | default([]) }}"
+            suspicious_ports: "{{ suspicious_port_hits | default([]) }}"
+            candidate_pids: "{{ candidate_pids | default([]) }}"
+          actions:
+            isolated: "{{ isolate_host }}"
+            allowed_cidr: "{{ allowed_mgmt_cidr }}"
+            processes_blocked: "{{ block_processes }}"
+
+    - name: Write report to file
+      copy:
+        dest: "{{ report_path }}"
+        content: "{{ endpoint_report | to_nice_json }}"
+        mode: "0640"
+
+    - name: Summary
+      debug:
+        msg: >-
+          Report saved to {{ report_path }}. suspicious_processes={{ suspicious_processes | default([]) | length }}, suspended={{ block_processes }}, isolated={{ isolate_host }}.
+
+    - name: Append SOC audit line (control node)
+      delegate_to: localhost
+      lineinfile:
+        path: "{{ lookup('env','SOC_AUDIT_LOG') | default('soc_audit.log', true) }}"
+        line: >-
+          {{ {'timestamp': lookup('pipe','date -Iseconds'),
+               'action': 'endpoint_suspicious_activity',
+               'host': inventory_hostname,
+               'isolated': isolate_host,
+               'processes_blocked': block_processes,
+               'report': report_path } | to_json }}
+        create: true
+        insertafter: EOF
+      changed_when: false
