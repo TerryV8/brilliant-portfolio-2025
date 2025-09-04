@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Join Meeting{% endblock %}
+
+{% block content %}
+<style>
+    .center-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 80vh;
+    }
+</style>
+
+<div class="center-container">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white">
+                <h3 class="mb-0 text-center">Join Meeting</h3>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="/join">
+                    <div class="mb-3">
+                        <label for="room_id" class="form-label">Meeting ID</label>
+                        <input type="text" class="form-control" id="room_id" name="room_id" 
+                               placeholder="Enter meeting ID" required>
+                        <div class="form-text">Enter the meeting ID provided by the meeting host</div>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">Join Meeting</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

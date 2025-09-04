@@ -1,44 +1,40 @@
+# Environment variables
+.env
+.env.local
+.env.production
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
-.python-version
-
-# Virtual environments
-.env/
-.env.*
-.venv/
-venv/
-env/
-
-# Packaging
+*.so
+.Python
 build/
+develop-eggs/
 dist/
-*.egg-info/
+downloads/
+eggs/
 .eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
 *.egg
-pip-wheel-metadata/
 
-# Testing
-.pytest_cache/
-.coverage
-.coverage.*
-.cache/
-htmlcov/
-.tox/
-.nox/
+# Flask
+instance/
+.webassets-cache
 
-# Type checkers & linters
-.mypy_cache/
-.dmypy.json
-.pytype/
-.pyre/
-.ruff_cache/
+# Database
+*.db
+*.sqlite
+*.sqlite3
 
-# Jupyter
-.ipynb_checkpoints/
-
-# IDEs & editors
+# IDE
 .vscode/
 .idea/
 *.swp
@@ -48,16 +44,5 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Logs & misc
+# Logs
 *.log
-coverage.xml
-pytestdebug.log
-
-# Local configs/secrets
-*.env
-*.env.*
-.envrc
-
-# Database files
-*.db
-instance/

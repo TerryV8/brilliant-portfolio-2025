@@ -28,6 +28,8 @@
       background: var(--background-gradient);
       background-attachment: fixed;
       color: #212529;
+      display: flex;
+      flex-direction: column;
     }
     
     .auth-card, .meeting-card {
@@ -83,10 +85,12 @@
   {% block extra_css %}{% endblock %}
 </head>
 <body>
-  {% block content %}{% endblock %}
+  <main style="flex: 1;">
+    {% block content %}{% endblock %}
+  </main>
 
   {% block footer %}
-  <footer class="py-4 border-top mt-auto glass">
+  <footer class="py-4 border-top glass">
     <div class="container text-center">
       <div class="d-inline-flex align-items-center">
         <span class="fw-semibold me-2">© <span id="year"></span></span>

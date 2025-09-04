@@ -57,11 +57,19 @@ A comprehensive collection of Security Operations Center (SOC) automation tools,
 
 ### Flask SaaS Platform
 
-- **Zoom Clone** (`python_saas/zoom saas 2025 09/`) - Secure video conferencing platform
-  - User authentication with password hashing
-  - Session management
-  - Environment variable configuration
-  - SQLite database integration
+- **Video Conferencing Platform** (`python_saas/zoom saas 2025 09/`) - Full-featured video meeting application
+  - **Technologies**: Python 3.11+, Flask, SQLAlchemy ORM, WebSocket APIs, PostgreSQL, Docker, REST APIs
+  - Real-time video conferencing with ZegoCloud SDK
+  - User authentication with secure password hashing
+  - Session management and room-based meetings
+  - Environment variable configuration with python-dotenv
+  - PostgreSQL/SQLite database flexibility
+  - Meeting room creation and joining functionality
+
+<p align="left">
+  <img src="images/zoom_saas.png" alt="Video Conferencing Platform" height="300">
+  <img src="images/zoom_saas2.png" alt="Video Conferencing Platform - Meeting UI" height="300">
+</p>
 
 ### TypeScript/Next.js Applications
 

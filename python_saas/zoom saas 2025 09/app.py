@@ -1,12 +1,20 @@
+import os
 from flask import Flask, render_template, request, redirect, session, flash, url_for
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import or_
 from werkzeug.security import generate_password_hash, check_password_hash
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
 
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///database.db"
-app.config["SECRET_KEY"] = "My Super Secret KEY"
+# Secure configuration using environment variables
+app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv(
+    "DATABASE_URL",
+    "postgresql://admin:fake_password@dpg-d2sl460gjchc73age5a1-a.virginia-postgres.render.com/zoom_db",
+)
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "fake_secret_key")
 
 db = SQLAlchemy(app)
 
@@ -14,7 +22,7 @@ db = SQLAlchemy(app)
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    password = db.Column(db.String(80), nullable=False)
+    password = db.Column(db.String(255), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
 
 
@@ -75,12 +83,16 @@ def register():
 
 @app.route("/meeting")
 def meeting():
-    return render_template("meeting.html")
+    current_user = User.query.get(session["user_id"])
+    return render_template("meeting.html", current_user=current_user)
 
 
-@app.route("/join")
-def join():
-    return render_template("join.html")
+@app.route("/join", methods=["GET", "POST"])
+def join_meeting():
+    if request.method == "POST":
+        room_id = request.form.get("room_id")
+        return redirect(f"/meeting?roomID={room_id}")
+    return render_template("join_meeting.html")
 
 
 @app.route("/logout")

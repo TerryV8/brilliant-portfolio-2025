@@ -1,0 +1,26 @@
+blinker==1.9.0
+certifi==2023.7.22
+cffi @ file:///private/tmp/cffi-20230928-4569-10mse72/cffi-1.16.0
+click==8.2.1
+cryptography @ file:///private/tmp/python-cryptography-20230919-6530-1nu01ji/cryptography-41.0.4
+Flask==3.1.2
+Flask-SQLAlchemy==3.1.1
+Flask-WTF==1.2.2
+itsdangerous==2.2.0
+Jinja2==3.1.6
+MarkupSafe==3.0.2
+mypy==1.17.1
+mypy_extensions==1.1.0
+packaging @ file:///private/tmp/python-packaging-20231006-5655-bckgbi/packaging-23.2
+pathspec==0.12.1
+pycparser==2.21
+Pygments @ file:///private/tmp/pygments-20230806-5921-1vpw7cv/Pygments-2.16.1
+pytz @ file:///private/tmp/python-pytz-20231006-5354-ekkzja/pytz-2023.3.post1
+pywatchman==1.4.1
+PyYAML @ file:///private/tmp/pyyaml-20230717-6270-1iiwi1j/PyYAML-6.0.1
+six==1.16.0
+SQLAlchemy==2.0.43
+typing_extensions @ file:///private/tmp/python-typing-extensions-20230918-5834-lqn2tt/typing_extensions-4.8.0/dist/typing_extensions-4.8.0-py3-none-any.whl#sha256=a59413bd4c912cdedf47337addcc92dbc24253088639a1960da0e7c4d08453da
+Werkzeug==3.1.3
+WTForms==3.2.1
+psycopg2-binary==2.9.10
