@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Playlists - Spotify SaaS</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        min-height: 100vh;
+        color: white;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 40px;
+      }
+
+      .header h1 {
+        font-size: 3rem;
+        margin-bottom: 10px;
+        background: linear-gradient(45deg, #1db954, #1ed760);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .header p {
+        font-size: 1.2rem;
+        opacity: 0.8;
+      }
+
+      .playlist-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 30px;
+        margin-bottom: 40px;
+      }
+
+      .playlist-card {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 15px;
+        padding: 25px;
+        transition: all 0.3s ease;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        overflow: hidden;
+      }
+
+      .playlist-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      }
+
+      .playlist-cover {
+        width: 100%;
+        height: 100px;
+        border-radius: 10px;
+        margin-bottom: 15px;
+        background: transparent;
+        overflow: hidden;
+        position: relative;
+      }
+
+      .playlist-cover.single-image {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .carousel-container {
+        width: 400%;
+        height: 100%;
+        display: flex;
+        animation: carousel 15s infinite ease-in-out;
+      }
+
+      .carousel-container img {
+        width: 25%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 0;
+        flex-shrink: 0;
+      }
+
+      @keyframes carousel {
+        0%,
+        20% {
+          transform: translateX(0);
+        }
+        25%,
+        45% {
+          transform: translateX(-25%);
+        }
+        50%,
+        70% {
+          transform: translateX(-50%);
+        }
+        75%,
+        95% {
+          transform: translateX(-75%);
+        }
+        100% {
+          transform: translateX(0);
+        }
+      }
+
+      .playlist-cover .single-cover {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 10px;
+      }
+
+      .playlist-cover .fallback-icon {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        color: rgba(255, 255, 255, 0.7);
+      }
+
+      .playlist-name {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 15px;
+        color: #1db954;
+      }
+
+      .playlist-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+
+      .song-count {
+        background: rgba(29, 185, 84, 0.2);
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+      }
+
+      .playlist-actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      .btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 25px;
+        font-weight: 600;
+        text-decoration: none;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 0.9rem;
+      }
+
+      .btn-primary {
+        background: #1db954;
+        color: white;
+      }
+
+      .btn-primary:hover {
+        background: #1ed760;
+        transform: scale(1.05);
+      }
+
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
+
+      .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+      }
+
+      .empty-state h2 {
+        font-size: 2rem;
+        margin-bottom: 15px;
+        opacity: 0.7;
+      }
+
+      .empty-state p {
+        font-size: 1.1rem;
+        opacity: 0.6;
+        margin-bottom: 30px;
+      }
+
+      .create-playlist-btn {
+        display: inline-block;
+        background: #1db954;
+        color: white;
+        padding: 15px 30px;
+        border-radius: 30px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+      }
+
+      .create-playlist-btn:hover {
+        background: #1ed760;
+        transform: scale(1.05);
+      }
+
+      .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+        color: white;
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      .back-link:hover {
+        color: #1ed760;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <a href="{% url 'main:index' %}" class="back-link">← Back to Home</a>
+
+      <div class="header">
+        <h1>My Playlists</h1>
+        <p>Manage and explore your music collections</p>
+      </div>
+
+      {% if playlists %}
+      <div class="playlist-grid">
+        {% for playlist in playlists %}
+        <div class="playlist-card">
+          <div
+            class="playlist-cover{% if playlist.song.count <= 1 %} single-image{% endif %}"
+          >
+            {% with songs_with_covers=playlist.song.all|slice:":4" %}
+            {% if songs_with_covers and playlist.song.count > 1 %}
+            <div class="carousel-container">
+              {% for song in songs_with_covers %}
+              {% if song.cover_image %}
+              <img src="{{ song.cover_image.url }}" alt="{{ song.title }}" />
+              {% endif %}
+              {% endfor %}
+              <!-- Fill remaining slots if less than 4 images -->
+              {% for song in songs_with_covers %}
+              {% if song.cover_image and forloop.counter <= 4 %}
+              <img src="{{ song.cover_image.url }}" alt="{{ song.title }}" />
+              {% endif %}
+              {% endfor %}
+            </div>
+            {% elif playlist.song.count == 1 and songs_with_covers.0.cover_image %}
+            <img
+              src="{{ songs_with_covers.0.cover_image.url }}"
+              alt="{{ playlist.name }}"
+              class="single-cover"
+            />
+            {% else %}
+            <div class="fallback-icon">🎵</div>
+            {% endif %}
+            {% endwith %}
+          </div>
+          <div class="playlist-name">{{ playlist.name }}</div>
+          <div class="playlist-info">
+            <div class="song-count">
+              {{ playlist.song.count }} song{{ playlist.song.count|pluralize }}
+            </div>
+          </div>
+          <div class="playlist-actions">
+            <a
+              href="{% url 'main:view_playlist' playlist.id %}"
+              class="btn btn-primary"
+            >
+              View Playlist
+            </a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <h2>No Playlists Yet</h2>
+        <p>
+          You haven't created any playlists yet. Start building your music
+          collection!
+        </p>
+        <a href="{% url 'main:create_playlist' %}" class="create-playlist-btn">
+          Create Your First Playlist
+        </a>
+      </div>
+      {% endif %} {% if playlists %}
+      <div style="text-align: center; margin-top: 40px">
+        <a href="{% url 'main:create_playlist' %}" class="create-playlist-btn">
+          Create New Playlist
+        </a>
+      </div>
+      {% endif %}
+    </div>
+  </body>
+</html>

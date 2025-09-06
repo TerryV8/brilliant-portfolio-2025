@@ -57,7 +57,7 @@ A comprehensive collection of Security Operations Center (SOC) automation tools,
 
 ### Flask SaaS Platform
 
-- **Video Conferencing Platform** (`python_saas/zoom saas 2025 09/`) - Full-featured video meeting application
+- **Zoom Clone** (`python_saas/zoom saas 2025 09/`) - Full-featured video meeting application
   - **Technologies**: Python 3.11+, Flask, SQLAlchemy ORM, WebSocket APIs, PostgreSQL, Docker, REST APIs
   - Real-time video conferencing with ZegoCloud SDK
   - User authentication with secure password hashing
@@ -69,6 +69,28 @@ A comprehensive collection of Security Operations Center (SOC) automation tools,
 <p align="left">
   <img src="images/zoom_saas.png" alt="Video Conferencing Platform" height="300">
   <img src="images/zoom_saas2.png" alt="Video Conferencing Platform - Meeting UI" height="300">
+</p>
+
+
+
+
+### Django SaaS Platform
+
+- **Spotify Clone** (`python_saas/spotify saas 2025 09/`) - Advanced music streaming application
+  - **Technologies**: Python 3.11+, Django 5.2+, SQLite, yt-dlp, AJAX, Bootstrap
+  - YouTube audio extraction with yt-dlp for offline playback
+  - Smart audio prioritization: direct files > extracted audio > YouTube embeds
+  - **Authenticated user features**: Personal playlist creation and management
+  - Real-time "Add to Playlist" functionality with modal interface (authenticated users only)
+  - User registration, login/logout with secure session management
+  - Automatic duplicate prevention in playlists
+  - Responsive design with gradient themes and animations
+  - Audio file management with Django media handling
+  - Search and filtering capabilities for music library
+  - Comprehensive error handling and user notifications
+
+<p align="left">
+  <img src="images/spotify_saas.png" alt="Music Platform" height="300">
 </p>
 
 ### TypeScript/Next.js Applications

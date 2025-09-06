@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - Spotify Clone</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .register-container {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 40px;
+        width: 100%;
+        max-width: 450px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      }
+
+      .login-header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      .login-header h1 {
+        font-size: 2.5rem;
+        margin-bottom: 10px;
+        background: linear-gradient(45deg, #1db954, #1ed760);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .login-header p {
+        opacity: 0.8;
+        font-size: 1rem;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: #1ed760;
+      }
+
+      .form-group input {
+        width: 100%;
+        padding: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+      }
+
+      .form-group input:focus {
+        outline: none;
+        border-color: #1ed760;
+        background: rgba(255, 255, 255, 0.15);
+        box-shadow: 0 0 0 3px rgba(30, 215, 96, 0.2);
+      }
+
+      .form-group input::placeholder {
+        color: rgba(255, 255, 255, 0.6);
+      }
+
+      .login-btn {
+        width: 100%;
+        background: linear-gradient(45deg, #1db954, #1ed760);
+        border: none;
+        color: white;
+        padding: 15px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 1.1rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        margin-top: 10px;
+      }
+
+      .login-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(30, 215, 96, 0.3);
+      }
+
+      .login-btn:active {
+        transform: translateY(0);
+      }
+
+      .register-link {
+        text-align: center;
+        margin-top: 25px;
+        padding-top: 20px;
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .register-link a {
+        color: #1ed760;
+        text-decoration: none;
+        font-weight: 500;
+        transition: color 0.3s ease;
+      }
+
+      .register-link a:hover {
+        color: #1db954;
+        text-decoration: underline;
+      }
+
+      .back-home {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+      }
+
+      .back-home a {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: white;
+        text-decoration: none;
+        padding: 10px 15px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 8px;
+        transition: background 0.3s ease;
+      }
+
+      .back-home a:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      .error-message {
+        background: rgba(255, 107, 107, 0.1);
+        border: 1px solid rgba(255, 107, 107, 0.3);
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        color: #ff6b6b;
+      }
+
+      .success-message {
+        background: rgba(30, 215, 96, 0.1);
+        border: 1px solid rgba(30, 215, 96, 0.3);
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        color: #1ed760;
+      }
+
+      .password-requirements {
+        font-size: 0.85rem;
+        color: rgba(255, 255, 255, 0.7);
+        margin-top: 5px;
+        line-height: 1.4;
+      }
+
+      @media (max-width: 480px) {
+        .login-container {
+          margin: 20px;
+          padding: 30px 25px;
+        }
+
+        .login-header h1 {
+          font-size: 2rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="back-home">
+      <a href="{% url 'main:index' %}"> ← Back to Music </a>
+    </div>
+
+    <div class="login-container">
+      <div class="login-header">
+        <h1>🎵 Welcome Back</h1>
+        <p>Sign in to continue your music journey</p>
+      </div>
+
+      {% if messages %} {% for message in messages %}
+      <div
+        class="{% if message.tags == 'error' %}error-message{% else %}success-message{% endif %}"
+      >
+        {{ message }}
+      </div>
+      {% endfor %} {% endif %}
+
+      <form method="post" action="{% url 'main:login_user' %}">
+        {% csrf_token %}
+
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input
+            type="text"
+            id="username"
+            name="username"
+            placeholder="Enter your username"
+            required
+            value="{{ username|default:'' }}"
+          />
+          {% if form.username.errors %}
+          <div class="error-message">
+            {% for error in form.username.errors %} {{ error }} {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input
+            type="password"
+            id="password"
+            name="password"
+            placeholder="Enter your password"
+            required
+          />
+          {% if form.password.errors %}
+          <div class="error-message">
+            {% for error in form.password.errors %} {{ error }} {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+
+        <button type="submit" class="login-btn">🎵 Sign In</button>
+      </form>
+
+      <div class="register-link">
+        <p>
+          Don't have an account?
+          <a href="{% url 'main:register_user' %}">Create one here</a>
+        </p>
+      </div>
+    </div>
+  </body>
+</html>
