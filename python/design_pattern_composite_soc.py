@@ -1,3 +1,24 @@
+"""
+Understanding the Composite Design Pattern
+
+The Composite Design Pattern is a structural pattern that lets you compose objects into tree-like structures to represent part-whole hierarchies.
+It allows clients to treat individual objects and compositions of objects uniformly.
+
+Simple Explanation
+Think of the composite pattern like a file system:
+- Leaf: A single file (like document.txt)
+- Composite: A folder that can contain files or other folders
+
+The key idea is that both individual files and folders can be treated the same way when performing operations (like "calculate size" or "list contents").
+
+Real-World Example from Your Code
+In this file, you have:
+- Component Interface: AlertSink (defines common operations)
+- Leaf Classes: ElasticSink and SplunkSink (individual alert destinations)
+- Composite Class: CompositeSink (can contain multiple sinks)
+- Specialized Composite: FilteredCompositeSink (adds filtering behavior)
+"""
+
 # Composite Design Pattern in a DevOps/SOC context
 #
 # Goal:

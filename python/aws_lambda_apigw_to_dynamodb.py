@@ -25,6 +25,7 @@ DynamoDB item shape (example when JSON body is an object):
 
 Handler: handler(event, context)
 """
+
 from __future__ import annotations
 
 import base64
@@ -39,9 +40,12 @@ import boto3
 from botocore.exceptions import ClientError
 
 # Pre-compiled regex to extract a plausible client IP from headers if present
-RE_IPv4 = re.compile(r"\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b")
+RE_IPv4 = re.compile(
+    r"\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b"
+)
 
 ddb = boto3.resource("dynamodb")
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -55,9 +59,11 @@ def _table() -> Any:
 
 
 def handler(event, context):
-    is_apigw = isinstance(event, dict) and (
-        "requestContext" in event or "httpMethod" in event or "version" in event
-    ) and ("body" in event or "queryStringParameters" in event or "headers" in event)
+    is_apigw = (
+        isinstance(event, dict)
+        and ("requestContext" in event or "httpMethod" in event or "version" in event)
+        and ("body" in event or "queryStringParameters" in event or "headers" in event)
+    )
 
     if not is_apigw:
         # Still accept direct invokes with {"payload": {...}} or {"text": "..."}
@@ -76,7 +82,9 @@ def handler(event, context):
 
 def _client_ip_from_event(event: dict) -> Optional[str]:
     # Try common places for client IP
-    headers = (event.get("headers") or {}) if isinstance(event.get("headers"), dict) else {}
+    headers = (
+        (event.get("headers") or {}) if isinstance(event.get("headers"), dict) else {}
+    )
     # X-Forwarded-For may hold comma-separated list, first is client
     for key in ("X-Forwarded-For", "x-forwarded-for", "X-Real-IP", "x-real-ip"):
         if key in headers and isinstance(headers[key], str):
@@ -99,7 +107,11 @@ def _parse_apigw_input(event: dict) -> Tuple[Any, int, Optional[str]]:
     - If text body or query ?text=: returns a string
     """
     headers = event.get("headers") or {}
-    headers_ci = {str(k).lower(): v for k, v in headers.items()} if isinstance(headers, dict) else {}
+    headers_ci = (
+        {str(k).lower(): v for k, v in headers.items()}
+        if isinstance(headers, dict)
+        else {}
+    )
     ctype = str(headers_ci.get("content-type", ""))
 
     body = event.get("body")
@@ -133,7 +145,11 @@ def _build_item(payload_or_text: Any, event: dict) -> Dict[str, Any]:
     # Determine id
     provided_id: Optional[str] = None
     if isinstance(payload_or_text, dict):
-        provided_id = payload_or_text.get("id") if isinstance(payload_or_text.get("id"), str) else None
+        provided_id = (
+            payload_or_text.get("id")
+            if isinstance(payload_or_text.get("id"), str)
+            else None
+        )
     item_id = provided_id or str(uuid.uuid4())
 
     ip = _client_ip_from_event(event)

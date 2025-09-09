@@ -1,4 +1,36 @@
-# Factory Design Pattern applied to a DevOps/SOC context
+"""
+Understanding the Factory Design Pattern
+
+The Factory Design Pattern is a creational pattern that provides an interface for creating objects in a superclass,
+but allows subclasses to alter the type of objects that will be created.
+It's like ordering food from a menu - you ask for a dish, and the kitchen (factory) decides how to prepare it.
+
+Simple Explanation
+Think of the factory pattern like ordering at a coffee shop:
+- Factory: The coffee shop/barista
+- Product: Different coffee types (Latte, Americano, Cappuccino)
+- Client: You, who just orders a coffee without knowing how it's made
+
+Example:
+1. You order a "latte" (client makes a request)
+2. The barista (factory) knows how to make it
+3. You get your latte without needing to know the recipe
+
+Key Concepts
+- Creator: Declares the factory method that returns product objects
+- Concrete Creator: Implements the factory method to create specific products
+- Product: The interface of objects the factory creates
+- Concrete Product: The actual objects created by the factory
+
+Real-World Example from This Code
+In this file, we implement a SIEM (Security Information and Event Management) event sender factory:
+- Product: EventSender interface
+- Concrete Products: ElasticSender, SplunkSender, etc.
+- Creator: EventSenderFactory that creates the appropriate sender
+- Client: AuthMonitor, FirewallMonitor that use the sender
+"""
+
+# Factory Design Pattern in a DevOps/SOC context
 #
 # Goal: Choose which SIEM sender implementation to use (Elastic, Splunk, etc.)
 # at runtime, while client code depends only on the EventSender interface.
@@ -48,7 +80,6 @@ class SplunkSender(EventSender):
 
 
 # Concrete Product: Stdout (fallback / local dev)
- 
 
 
 # Simple Factory
@@ -67,7 +98,9 @@ class EventSenderFactory:
         key_env = os.getenv("SIEM_VENDOR")
         key_source = vendor if vendor is not None else key_env
         if not key_source:
-            raise ValueError("SIEM vendor not specified. Set SIEM_VENDOR or pass vendor explicitly (elastic|splunk).")
+            raise ValueError(
+                "SIEM vendor not specified. Set SIEM_VENDOR or pass vendor explicitly (elastic|splunk)."
+            )
         key = key_source.strip().lower()
 
         if key == "elastic":

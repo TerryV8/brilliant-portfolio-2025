@@ -1,7 +1,31 @@
-# Example of Proxy Design Pattern (Virtual Proxy)
-#
-# Goal of the Proxy pattern:
-# - Provide a surrogate/placeholder for another object to control access to it.
+"""
+Understanding the Proxy Design Pattern
+
+The Proxy Design Pattern is a structural pattern that provides a surrogate or placeholder for another object to control access to it. It's like having a personal assistant who handles all your requests to a busy executive.
+
+Simple Explanation
+Think of the proxy pattern like a bank teller:
+- Subject: The bank account interface
+- Real Subject: Your actual bank account
+- Proxy: The bank teller who controls access to your account
+
+Example:
+1. You ask the teller (proxy) to check your balance
+2. The teller verifies your ID (access control)
+3. Only then does the teller access the real bank account
+
+Key Concepts
+- Subject: The interface that both RealSubject and Proxy implement
+- RealSubject: The actual object that does the real work
+- Proxy: Controls access to the RealSubject, adding extra behavior
+
+Real-World Example from This Code
+In this file, we implement a SIEM (Security Information and Event Management) sender proxy:
+- Subject: AlertSender interface
+- RealSubject: RealSIEMSender that sends alerts to a SIEM
+- Proxy: SIEMSenderProxy that adds authentication, rate limiting, and lazy initialization
+"""
+
 # Proxy Design Pattern in a DevOps/SOC context (Protection + Virtual Proxy)
 #
 # Goal:

@@ -1,4 +1,51 @@
 """
+Understanding the Decorator Design Pattern
+
+The Decorator Design Pattern is a structural pattern that lets you add new functionality to objects
+dynamically without altering their structure. It's like adding toppings to a pizza - the base remains
+the same, but you can add different combinations of toppings to enhance it.
+
+Simple Explanation
+Think of the decorator pattern like customizing your coffee:
+- Component: Basic coffee
+- Decorators: Milk, sugar, whipped cream, etc.
+
+Each decorator wraps the original coffee, adding its own flavor. You can combine them in any order.
+
+Key Concepts
+- Component: The base interface (e.g., Coffee)
+- Concrete Component: The basic implementation (e.g., SimpleCoffee)
+- Decorator: Abstract class that implements the Component interface
+- Concrete Decorators: Specific additions (e.g., MilkDecorator, SugarDecorator)
+
+Real-World Example from This Code
+In this file, we implement an audit logging system:
+- Component: Any function that needs auditing (e.g., login, file operations)
+- Decorator: @audit_event that wraps functions to add logging
+- The decorator adds timing, status tracking, and structured logging
+- Preserves the original function's metadata and signature
+"""
+
+# Decorator Design Pattern in a DevOps/SOC context
+#
+# Goal:
+# - Add audit logging to functions without modifying their core logic
+# - Track execution time, success/failure, and relevant context
+# - Write structured logs in JSONL format for easy processing
+#
+# Benefits:
+# - Separation of concerns: security logging is separate from business logic
+# - Reusable: apply the same audit logic to any function
+# - Non-intrusive: no changes needed to existing function implementations
+
+from typing import Callable, Any, TypeVar
+from functools import wraps
+import time
+import json
+import os
+from pathlib import Path
+
+"""
 MAIN GOAL: SOC/DevOps-focused decorator for audit logging.
 
 This file shows:
@@ -8,12 +55,6 @@ This file shows:
 - Minimal demo with two monitors (auth, firewall)
 """
 
-from typing import Callable, Any, TypeVar
-from functools import wraps
-import time
-import json
-import os
-from pathlib import Path
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -45,7 +86,15 @@ def audit_event(func: F) -> F:
                 "status": status,
                 "duration_ms": duration_ms,
             }
-            for k in ("kind", "severity", "username", "ip", "src_ip", "dst_ip", "message"):
+            for k in (
+                "kind",
+                "severity",
+                "username",
+                "ip",
+                "src_ip",
+                "dst_ip",
+                "message",
+            ):
                 if k in kwargs:
                     event[k] = kwargs[k]
             log_path = os.getenv("SOC_AUDIT_LOG", "soc_audit_log.jsonl")

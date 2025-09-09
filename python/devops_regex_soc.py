@@ -30,6 +30,7 @@ Usage examples:
   # tail logs and match pattern
   tail -f /var/log/syslog | python python/devops_regex_tools.py tail-match -p "(error|fail|denied)"
 """
+
 from __future__ import annotations
 
 import argparse
@@ -41,17 +42,25 @@ import os
 from typing import Iterable, Iterator, Optional, Tuple
 
 # Basic regexes
-RE_IPv4 = re.compile(r"\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b")
-RE_CIDR = re.compile(r"^((?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d))\/(\d|[12]\d|3[0-2])$")
+RE_IPv4 = re.compile(
+    r"\b(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)\b"
+)
+RE_CIDR = re.compile(
+    r"^((?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d))\/(\d|[12]\d|3[0-2])$"
+)
 RE_URL = re.compile(r"\bhttps?://[^\s\]\[<>\)\(\"']+", re.IGNORECASE)
 RE_EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
-RE_FR_PHONE = re.compile(r"\b(?:\+33\s?[1-9](?:[ .-]?\d{2}){4}|0[1-9](?:[ .-]?\d{2}){4})\b")
-RE_LOG_LEVEL = re.compile(r"\b(DEBUG|INFO|WARN|WARNING|ERROR|CRITICAL|FATAL)\b", re.IGNORECASE)
+RE_FR_PHONE = re.compile(
+    r"\b(?:\+33\s?[1-9](?:[ .-]?\d{2}){4}|0[1-9](?:[ .-]?\d{2}){4})\b"
+)
+RE_LOG_LEVEL = re.compile(
+    r"\b(DEBUG|INFO|WARN|WARNING|ERROR|CRITICAL|FATAL)\b", re.IGNORECASE
+)
 
 
 # NGINX common/combined log format (best-effort)
 RE_NGINX = re.compile(
-    r"^(?P<remote_addr>\S+)\s+-\s+(?P<remote_user>\S+)\s+\[(?P<time_local>[^\]]+)\]\s+\"(?P<request>[A-Z]+\s+[^\s]+\s+HTTP/[0-9.]+)\"\s+" \
+    r"^(?P<remote_addr>\S+)\s+-\s+(?P<remote_user>\S+)\s+\[(?P<time_local>[^\]]+)\]\s+\"(?P<request>[A-Z]+\s+[^\s]+\s+HTTP/[0-9.]+)\"\s+"
     r"(?P<status>\d{3})\s+(?P<body_bytes_sent>\d+)\s+\"(?P<http_referer>[^\"]*)\"\s+\"(?P<http_user_agent>[^\"]*)\""
 )
 
@@ -71,9 +80,6 @@ def cmd_grep(pattern: str, path: Optional[Path]):
     for ln, line in read_lines(path):
         if rx.search(line):
             print(f"{ln}: {line}")
-
-
- 
 
 
 def cmd_extract(pattern: re.Pattern, path: Optional[Path]):
@@ -103,7 +109,7 @@ def cmd_log_criticality(path: Optional[Path], count: bool):
             else:
                 print(f"{lvl}: {line}")
     if count:
-        for lvl in ["DEBUG","INFO","WARN","WARNING","ERROR","CRITICAL","FATAL"]:
+        for lvl in ["DEBUG", "INFO", "WARN", "WARNING", "ERROR", "CRITICAL", "FATAL"]:
             if lvl in levels:
                 print(f"{lvl}: {levels[lvl]}")
 
@@ -185,9 +191,13 @@ def build_parser() -> argparse.ArgumentParser:
     sub = p.add_subparsers(dest="cmd", required=True)
 
     p_grep = sub.add_parser("grep", help="grep a file/stdin with regex")
-    p_grep.add_argument("-p", "--pattern", required=False, help="regex pattern; or set ENV REGEX_PATTERN")
+    p_grep.add_argument(
+        "-p",
+        "--pattern",
+        required=False,
+        help="regex pattern; or set ENV REGEX_PATTERN",
+    )
     p_grep.add_argument("file", nargs="?", help="path or - for stdin")
-
 
     p_ips = sub.add_parser("extract-ips", help="extract IPv4 addresses")
     p_ips.add_argument("file", nargs="?", help="path or - for stdin")
@@ -209,15 +219,23 @@ def build_parser() -> argparse.ArgumentParser:
     p_ng.add_argument("file", nargs="?", help="path or - for stdin")
 
     p_bump = sub.add_parser("bump-semver", help="bump first x.y.z in file")
-    p_bump.add_argument("-v", "--part", choices=["major", "minor", "patch"], default="patch")
+    p_bump.add_argument(
+        "-v", "--part", choices=["major", "minor", "patch"], default="patch"
+    )
     p_bump.add_argument("file")
 
     p_tail = sub.add_parser("tail-match", help="print lines from stdin matching regex")
     p_tail.add_argument("-p", "--pattern", required=True)
 
-    p_lvl = sub.add_parser("log-criticality", help="detect or count log levels (DEBUG..FATAL)")
+    p_lvl = sub.add_parser(
+        "log-criticality", help="detect or count log levels (DEBUG..FATAL)"
+    )
     p_lvl.add_argument("file", nargs="?", help="path or - for stdin")
-    p_lvl.add_argument("--count", action="store_true", help="print counts per level instead of lines; or set ENV LOG_LEVEL_COUNT=1")
+    p_lvl.add_argument(
+        "--count",
+        action="store_true",
+        help="print counts per level instead of lines; or set ENV LOG_LEVEL_COUNT=1",
+    )
 
     return p
 
@@ -244,7 +262,10 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     elif args.cmd == "grep":
         pattern = args.pattern or os.getenv("REGEX_PATTERN", None)
         if not pattern:
-            print("grep: pattern missing (provide -p/--pattern or set REGEX_PATTERN)", file=sys.stderr)
+            print(
+                "grep: pattern missing (provide -p/--pattern or set REGEX_PATTERN)",
+                file=sys.stderr,
+            )
             return 2
         cmd_grep(pattern, path_opt)
     elif args.cmd == "validate":
@@ -259,7 +280,11 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
         cmd_tail_match(args.pattern)
     elif args.cmd == "log-criticality":
         count_env = os.getenv("LOG_LEVEL_COUNT")
-        count_flag = args.count or (str(count_env).lower() in ["1", "true", "yes", "on"]) if count_env is not None else args.count
+        count_flag = (
+            args.count or (str(count_env).lower() in ["1", "true", "yes", "on"])
+            if count_env is not None
+            else args.count
+        )
         cmd_log_criticality(path_opt, count_flag)
     else:
         print("Unknown command", file=sys.stderr)

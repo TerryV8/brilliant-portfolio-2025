@@ -1,3 +1,30 @@
+"""
+Understanding the Singleton Design Pattern
+
+The Singleton Design Pattern is a creational pattern that ensures a class has only one instance and provides
+a global point of access to that instance. It's like having a single, shared resource that needs to be accessed
+consistently across an entire application.
+
+Simple Explanation
+Think of the Singleton pattern like a company's main reception desk:
+- There's only one main reception desk for the entire company
+- Everyone uses the same reception desk for their needs
+- The reception desk maintains consistent state and operations
+
+Key Concepts
+- Single Instance: Only one instance of the class exists in the application
+- Global Access: The instance is globally accessible
+- Lazy Initialization: The instance is created only when needed
+- Thread Safety: In multi-threaded environments, the singleton must be thread-safe
+
+In this SOC Context
+We implement a Singleton SIEM (Security Information and Event Management) client that ensures:
+- Only one connection to the SIEM server exists
+- Configuration is loaded once and shared
+- Event logging is consistent across the application
+- Resource usage is optimized by avoiding duplicate connections
+"""
+
 # Singleton in a DevOps/SOC context: central SIEM client
 #
 # Goal: Ensure only one configured client exists to send security events to a SIEM
@@ -93,4 +120,4 @@ if __name__ == "__main__":
     print("\nSingleton check: buffer length:", len(client.buffer))
     print("All events (buffered):")
     for e in client.buffer:
-        print(" -", e["kind"], e["message"]) 
+        print(" -", e["kind"], e["message"])
