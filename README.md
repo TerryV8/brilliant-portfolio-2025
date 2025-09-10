@@ -89,22 +89,28 @@ A comprehensive collection of Security Operations Center (SOC) automation tools,
   - Search and filtering capabilities for music library
   - Comprehensive error handling and user notifications
 
-- **Perplexity AI Clone** (`python_saas/perplexity AI-powered chat search engine saas 2025 09/`) - AI-powered search and chat platform
-  - **Technologies**: Python 3.11+, Flask/Django, OpenAI API, WebSocket, SQLAlchemy, Bootstrap
-  - AI-powered conversational search with real-time responses
-  - Intelligent source citation and reference linking
-  - **Authenticated user features**: Search history and personalized results
-  - Real-time chat interface with streaming responses
-  - Advanced search algorithms with context awareness
-  - Multi-source information aggregation and synthesis
-  - User authentication and session management
-  - Responsive design with modern chat UI/UX
-  - Search result caching and optimization
-  - Comprehensive error handling and API rate limiting
-
 <p align="left">
   <img src="images/spotify_saas.png" alt="Music Platform" height="300">
 </p>
+
+### Perplexity AI Search Engine
+
+A cutting-edge AI-powered search and chat platform that provides comprehensive, context-aware responses with source citations.
+
+**Key Features**:
+- **AI-Powered Search**: Utilizes GPT-4o for intelligent, conversational search responses
+- **Real-time Streaming**: Implements Server-Sent Events (SSE) for smooth, interactive conversations
+- **Source Citation & Integration**: Automatically cites and aggregates information from multiple web sources using Tavily Search API
+- **Contextual Conversations**: Maintains conversation history and context across messages for natural interactions
+- **Advanced State Management**: Uses LangGraph for complex conversation flows and tool orchestration
+
+**Tech Stack**:
+- **Frontend**: Next.js 14, TypeScript, Tailwind CSS
+- **Backend**: FastAPI, Python 3.11+
+- **AI/ML**: OpenAI GPT-4o, LangChain, LangGraph
+- **Search**: Tavily Search API
+- **Deployment**: Docker support included
+
 
 ### TypeScript/Next.js Applications
 
