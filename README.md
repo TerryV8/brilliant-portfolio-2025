@@ -93,23 +93,16 @@ A comprehensive collection of Security Operations Center (SOC) automation tools,
   <img src="images/spotify_saas.png" alt="Music Platform" height="300">
 </p>
 
-### Perplexity AI Search Engine
-
-A cutting-edge AI-powered search and chat platform that provides comprehensive, context-aware responses with source citations.
-
-**Key Features**:
-- **AI-Powered Search**: Utilizes GPT-4o for intelligent, conversational search responses
-- **Real-time Streaming**: Implements Server-Sent Events (SSE) for smooth, interactive conversations
-- **Source Citation & Integration**: Automatically cites and aggregates information from multiple web sources using Tavily Search API
-- **Contextual Conversations**: Maintains conversation history and context across messages for natural interactions
-- **Advanced State Management**: Uses LangGraph for complex conversation flows and tool orchestration
-
-**Tech Stack**:
-- **Frontend**: Next.js 14, TypeScript, Tailwind CSS
-- **Backend**: FastAPI, Python 3.11+
-- **AI/ML**: OpenAI GPT-4o, LangChain, LangGraph
-- **Search**: Tavily Search API
-- **Deployment**: Docker support included
+- **LangChain Platform** (`python_saas/perplexity AI-powered chat search engine saas 2025 09/`) - Advanced AI-powered search and chat application
+  - **Technologies**: Python 3.11+, FastAPI, Next.js, TypeScript, OpenAI GPT-4o, LangChain, LangGraph
+  - Real-time AI-powered search with streaming responses using Server-Sent Events (SSE)
+  - **Core Features**: Contextual conversations with memory and state management
+  - Automatic source citation and multi-source aggregation via Tavily Search API
+  - **Advanced Architecture**: LangGraph-powered conversation flows and tool orchestration
+  - Modern, responsive UI built with Next.js and Tailwind CSS
+  - Type-safe development with TypeScript
+  - Containerized deployment with Docker support
+  - Comprehensive error handling and rate limiting
 
 <p align="left">
   <img src="images/perplexity_saas.png" alt="Music Platform" height="300">
