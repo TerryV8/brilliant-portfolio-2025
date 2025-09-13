@@ -104,12 +104,12 @@ A comprehensive collection of Security Operations Center (SOC) automation tools,
   - Containerized deployment with Docker support
 
 <p align="left">
-  <img src="images/perplexity_saas.png" alt="Music Platform" height="500">
+  <img src="images/perplexity_saas.png" alt="Music Platform" height="600">
 </p>
 
 ### TypeScript/Next.js Applications
 
-- **Notion Clone** (`typescript/notion saas 2025 09/`) - Modern productivity application
+- **Notion Clone** (`typescript/notion saas git s2025 09/`) - Modern productivity application
   - React-based frontend
   - TypeScript for type safety
   - Modern UI components
