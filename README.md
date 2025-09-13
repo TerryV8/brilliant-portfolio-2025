@@ -111,6 +111,9 @@ A cutting-edge AI-powered search and chat platform that provides comprehensive, 
 - **Search**: Tavily Search API
 - **Deployment**: Docker support included
 
+<p align="left">
+  <img src="images/perplexity_saas.png" alt="Music Platform" height="300">
+</p>
 
 ### TypeScript/Next.js Applications
 
