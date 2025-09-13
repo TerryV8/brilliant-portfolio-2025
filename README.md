@@ -101,13 +101,10 @@ A comprehensive collection of Security Operations Center (SOC) automation tools,
   - **Core Features**: Contextual conversations with memory and state management
   - Automatic source citation and multi-source aggregation via Tavily Search API
   - **Advanced Architecture**: LangGraph-powered conversation flows and tool orchestration
-  - Modern, responsive UI built with Next.js and Tailwind CSS
-  - Type-safe development with TypeScript
   - Containerized deployment with Docker support
-  - Comprehensive error handling and rate limiting
 
 <p align="left">
-  <img src="images/perplexity_saas.png" alt="Music Platform" height="300">
+  <img src="images/perplexity_saas.png" alt="Music Platform" height="500">
 </p>
 
 ### TypeScript/Next.js Applications
