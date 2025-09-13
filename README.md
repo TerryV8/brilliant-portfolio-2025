@@ -93,7 +93,9 @@ A comprehensive collection of Security Operations Center (SOC) automation tools,
   <img src="images/spotify_saas.png" alt="Music Platform" height="300">
 </p>
 
-- **LangChain Platform** (`python_saas/perplexity AI-powered chat search engine saas 2025 09/`) - Advanced AI-powered search and chat application
+### Fast Api and LangChain Platform
+
+- **Perplexity AI Clone** (`python_saas/perplexity AI-powered chat search engine saas 2025 09/`) - Advanced AI-powered search and chat application
   - **Technologies**: Python 3.11+, FastAPI, Next.js, TypeScript, OpenAI GPT-4o, LangChain, LangGraph
   - Real-time AI-powered search with streaming responses using Server-Sent Events (SSE)
   - **Core Features**: Contextual conversations with memory and state management
