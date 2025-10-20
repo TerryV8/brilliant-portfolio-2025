@@ -1,7 +1,8 @@
 """
 Understanding the Proxy Design Pattern
 
-The Proxy Design Pattern is a structural pattern that provides a surrogate or placeholder for another object to control access to it. It's like having a personal assistant who handles all your requests to a busy executive.
+The Proxy Design Pattern is a structural pattern that provides a surrogate or placeholder for another object to control access to it.
+It's like having a personal assistant who handles all your requests to a busy executive.
 
 Simple Explanation
 Think of the proxy pattern like a bank teller:
